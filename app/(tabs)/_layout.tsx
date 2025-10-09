@@ -1,5 +1,5 @@
-import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs, useRouter } from 'expo-router';
 
 export default function TabsLayout() {
   const router = useRouter();
@@ -11,7 +11,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="(home)"
         options={{
           tabBarLabel: () => null,
           tabBarIcon: ({ focused }) => (
@@ -75,6 +75,13 @@ export default function TabsLayout() {
               color={focused ? 'black' : 'gray'}
             />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="(post)/[username]/post/[postID]"
+        options={{
+          tabBarLabel: () => null,
+          href: null,
         }}
       />
     </Tabs>
