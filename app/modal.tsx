@@ -1,10 +1,13 @@
 import FontAwesome from '@expo/vector-icons/build/FontAwesome';
 import Ionicons from '@expo/vector-icons/build/Ionicons';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
+  Alert,
   FlatList,
   Image,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -21,32 +24,30 @@ export function ListFooter({
   canAddThread: boolean;
   addThread: () => void;
 }) {
-  if (canAddThread) {
-    return (
-      <View style={styles.listFooter}>
-        <View style={styles.listFooterAvatar}>
-          <Image
-            source={require('../assets/images/denji.jpg')}
-            style={styles.avatarSmall}
-          />
-        </View>
-        <View>
-          <Pressable onPress={addThread} style={styles.input}>
-            <Text style={{ color: canAddThread ? '#999' : '#aaa' }}>
-              Add to Thread
-            </Text>
-          </Pressable>
-        </View>
+  return (
+    <View style={styles.listFooter}>
+      <View style={styles.listFooterAvatar}>
+        <Image
+          source={require('../assets/images/denji.jpg')}
+          style={styles.avatarSmall}
+        />
       </View>
-    );
-  }
+      <View>
+        <Pressable onPress={addThread} style={styles.input}>
+          <Text style={{ color: canAddThread ? '#999' : '#aaa' }}>
+            Add to Thread
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 interface Thread {
   id: string;
   text: string;
   hashtag?: string;
-  location?: [number, number];
+  location?: string;
   imageUris: string[];
 }
 
@@ -98,8 +99,36 @@ export default function Modal() {
     console.log('pickImage >>>', id);
   };
 
-  const getMyLocation = (id: string) => {
-    console.log('getMyLocation >>>', id);
+  const getMyLocation = async (id: string) => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Error getting location',
+        'Please grant permission to access location',
+        [
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          { text: 'Cancel' },
+        ]
+      );
+
+      return;
+    }
+
+    const location = await Location.getCurrentPositionAsync({});
+    const address = await Location.reverseGeocodeAsync({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    });
+    setThreads((prevThreads: Thread[]) =>
+      prevThreads.map(thread =>
+        thread.id === id
+          ? {
+              ...thread,
+              location: address[0].city?.toString(),
+            }
+          : thread
+      )
+    );
   };
 
   const canAddThread = (threads.at(-1)?.text.trim().length ?? 0) > 0;
@@ -171,6 +200,13 @@ export default function Modal() {
               showsHorizontalScrollIndicator={false}
               style={styles.imageFlatList}
             />
+          )}
+          {item.location && (
+            <View style={styles.locationContainer}>
+              <Text style={styles.locationText}>
+                {item.location[0]}, {item.location[1]}
+              </Text>
+            </View>
           )}
 
           <View style={styles.actionButtons}>
