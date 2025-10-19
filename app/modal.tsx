@@ -2,6 +2,7 @@ import FontAwesome from '@expo/vector-icons/build/FontAwesome';
 import Ionicons from '@expo/vector-icons/build/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import * as MediaLibrary from 'expo-media-library';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -164,10 +165,10 @@ export default function Modal() {
     /**
      * 이미지 저장하는 로직 해결 필요
      * */
-    // status = (await MediaLibrary.requestPermissionsAsync()).status;
-    // if (status === 'granted' && result.assets?.[0]?.uri) {
-    //   await MediaLibrary.saveToLibraryAsync(result.assets?.[0]?.uri ?? '');
-    // }
+    status = (await MediaLibrary.requestPermissionsAsync()).status;
+    if (status === 'granted' && result.assets?.[0]?.uri) {
+      await MediaLibrary.saveToLibraryAsync(result.assets?.[0]?.uri ?? '');
+    }
 
     if (!result.canceled) {
       setThreads((prevThreads: Thread[]) =>
