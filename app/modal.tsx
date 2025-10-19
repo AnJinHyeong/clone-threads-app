@@ -1,5 +1,6 @@
 import FontAwesome from '@expo/vector-icons/build/FontAwesome';
 import Ionicons from '@expo/vector-icons/build/Ionicons';
+import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -9,6 +10,7 @@ import {
   Image,
   Linking,
   Pressable,
+  Modal as RNModal,
   StyleSheet,
   Text,
   TextInput,
@@ -47,7 +49,7 @@ interface Thread {
   id: string;
   text: string;
   hashtag?: string;
-  location?: string;
+  location?: [number, number];
   imageUris: string[];
 }
 
@@ -61,6 +63,11 @@ export default function Modal() {
   const [replyOption, setReplyOption] = useState<string>('Anyone');
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
   const [isPosting, setIsPosting] = useState<boolean>(false);
+  const [replyOptions, setReplyOptions] = useState<string[]>([
+    'Anyone',
+    'Followers',
+    'Custom',
+  ]);
 
   const handleCancel = () => {
     setIsPosting(false);
@@ -85,18 +92,97 @@ export default function Modal() {
     );
   };
 
-  const removeImageFromThread = (id: string, uri: string) => {
-    setThreads(
-      threads.map(thread =>
+  const removeImageFromThread = (id: string, uriToRemove: string) => {
+    setThreads((prevThreads: Thread[]) =>
+      prevThreads.map(thread =>
         thread.id === id
-          ? { ...thread, imageUris: thread.imageUris.filter(u => u !== uri) }
+          ? {
+              ...thread,
+              imageUris: thread.imageUris.filter(url => url !== uriToRemove),
+            }
           : thread
       )
     );
   };
 
-  const pickImage = (id: string) => {
-    console.log('pickImage >>>', id);
+  const pickImage = async (id: string) => {
+    let { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Error getting photos',
+        'Please grant permission to access photos',
+        [
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          { text: 'Cancel' },
+        ]
+      );
+      return;
+    }
+
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images', 'livePhotos', 'videos'],
+      allowsMultipleSelection: true,
+      selectionLimit: 5,
+    });
+
+    if (!result.canceled) {
+      setThreads((prevThreads: Thread[]) =>
+        prevThreads.map(thread =>
+          thread.id === id
+            ? {
+                ...thread,
+                imageUris: thread.imageUris.concat(
+                  result.assets?.map(asset => asset.uri) ?? []
+                ),
+              }
+            : thread
+        )
+      );
+    }
+  };
+
+  const takePhoto = async (id: string) => {
+    let { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Error getting camera',
+        'Please grant permission to access camera',
+        [
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          { text: 'Cancel' },
+        ]
+      );
+      return;
+    }
+
+    let result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images', 'livePhotos', 'videos'],
+      allowsMultipleSelection: true,
+      selectionLimit: 5,
+    });
+
+    /**
+     * 이미지 저장하는 로직 해결 필요
+     * */
+    // status = (await MediaLibrary.requestPermissionsAsync()).status;
+    // if (status === 'granted' && result.assets?.[0]?.uri) {
+    //   await MediaLibrary.saveToLibraryAsync(result.assets?.[0]?.uri ?? '');
+    // }
+
+    if (!result.canceled) {
+      setThreads((prevThreads: Thread[]) =>
+        prevThreads.map(thread =>
+          thread.id === id
+            ? {
+                ...thread,
+                imageUris: thread.imageUris.concat(
+                  result.assets?.map(asset => asset.uri) ?? []
+                ),
+              }
+            : thread
+        )
+      );
+    }
   };
 
   const getMyLocation = async (id: string) => {
@@ -115,24 +201,24 @@ export default function Modal() {
     }
 
     const location = await Location.getCurrentPositionAsync({});
-    const address = await Location.reverseGeocodeAsync({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-    });
     setThreads((prevThreads: Thread[]) =>
       prevThreads.map(thread =>
         thread.id === id
           ? {
               ...thread,
-              location: address[0].city?.toString(),
+              location: [location.coords.latitude, location.coords.longitude],
             }
           : thread
       )
     );
   };
 
-  const canAddThread = (threads.at(-1)?.text.trim().length ?? 0) > 0;
-  const canPost = threads.every(thread => thread.text.trim().length > 0);
+  const canAddThread =
+    (threads.at(-1)?.text.trim().length ?? 0) > 0 ||
+    (threads.at(-1)?.imageUris.length ?? 0) > 0;
+  const canPost = threads.every(
+    thread => thread.text.trim().length > 0 || thread.imageUris.length > 0
+  );
 
   const renderThreadItem = ({
     item,
@@ -218,6 +304,12 @@ export default function Modal() {
             </Pressable>
             <Pressable
               style={styles.actionButton}
+              onPress={() => !isPosting && takePhoto(item.id)}
+            >
+              <Ionicons name="camera-outline" size={24} color="#777" />
+            </Pressable>
+            <Pressable
+              style={styles.actionButton}
               onPress={() => getMyLocation(item.id)}
             >
               <FontAwesome name="map-marker" size={24} color="#777" />
@@ -262,9 +354,48 @@ export default function Modal() {
         keyboardShouldPersistTaps="handled"
       />
 
+      <RNModal
+        transparent={true}
+        visible={isDropdownVisible}
+        animationType="fade"
+        onRequestClose={() => setIsDropdownVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setIsDropdownVisible(false)}
+        >
+          <View
+            style={[styles.dropdownContainer, { bottom: insets.bottom + 30 }]}
+          >
+            {replyOptions.map(option => (
+              <Pressable
+                key={option}
+                style={[
+                  styles.dropdownOption,
+                  option === replyOption && styles.selectedOption,
+                ]}
+                onPress={() => {
+                  setReplyOption(option);
+                  setIsDropdownVisible(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.dropdownOptionText,
+                    option === replyOption && styles.selectedOptionText,
+                  ]}
+                >
+                  {option}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </RNModal>
+
       <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
         <Pressable onPress={() => setIsDropdownVisible(true)}>
-          <Text style={styles.cancel}>anyone can reply & quote</Text>
+          <Text style={styles.cancel}>anyone can reply & {replyOption}</Text>
         </Pressable>
         <Pressable
           style={[styles.postButton, !canPost && styles.postButtonDisabled]}
@@ -430,11 +561,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   dropdownContainer: {
+    width: 200,
     backgroundColor: '#fff',
     borderRadius: 10,
     marginHorizontal: 10,
     overflow: 'hidden',
-    marginBottom: 5,
   },
   dropdownOption: {
     paddingVertical: 15,
