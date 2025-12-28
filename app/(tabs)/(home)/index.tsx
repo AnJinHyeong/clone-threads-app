@@ -1,8 +1,12 @@
+import { AuthContext } from '@/app/_layout';
+import SideMenu from '@/components/SideMenu';
+import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { usePathname, useRouter } from 'expo-router';
+import { useContext, useState } from 'react';
 import {
-  Dimensions,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,13 +18,9 @@ export default function Index() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const isLoggedIn = false;
-
-  console.log('pathname >>>', pathname);
-  console.log('insets >>>', insets);
-
-  const { width, height } = Dimensions.get('window');
-  console.log('화면 너비 / 화면 높이 >>>> width / height', width / height);
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+  const { user, logout } = useContext(AuthContext);
+  const isLoggedIn = !!user;
 
   return (
     <View
@@ -30,6 +30,20 @@ export default function Index() {
       ]}
     >
       <BlurView intensity={70} style={styles.header}>
+        {isLoggedIn && (
+          <Pressable
+            style={styles.menuButton}
+            onPress={() => {
+              setIsSideMenuOpen(true);
+            }}
+          >
+            <Ionicons name="menu" size={24} color="black" />
+          </Pressable>
+        )}
+        <SideMenu
+          isVisible={isSideMenuOpen}
+          onClose={() => setIsSideMenuOpen(false)}
+        />
         <Image
           source={require('../../../assets/images/react-logo.png')}
           style={styles.headerLogo}
@@ -115,5 +129,10 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: 'center',
+  },
+  menuButton: {
+    position: 'absolute',
+    left: 20,
+    top: 10,
   },
 });

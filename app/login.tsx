@@ -1,46 +1,24 @@
 import { Redirect, router } from 'expo-router';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useContext } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AuthContext } from './_layout';
 
 export default function Login() {
   const insets = useSafeAreaInsets();
-  const isLoggedIn = false;
+  const { user, login } = useContext(AuthContext);
+  const isLoggedIn = !!user;
 
   if (isLoggedIn) {
     return <Redirect href="/(tabs)" />;
   }
-
-  const onLoginPress = () => {
-    console.log('LOGIN');
-
-    fetch('/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        username: 'Denji',
-        password: '1234',
-      }),
-    })
-      .then(res => {
-        console.log('response >>>', res, res.status);
-        if (res.status >= 401) {
-          return Alert.alert('Error', 'Invalid username or password');
-        }
-        return res.json();
-      })
-      .then(data => {
-        console.log('data >>>', data);
-      })
-      .catch(error => {
-        console.error('error >>>', error);
-      });
-  };
 
   return (
     <View style={{ paddingTop: insets.top }}>
       <Pressable onPress={() => router.back()}>
         <Text>Back</Text>
       </Pressable>
-      <Pressable onPress={onLoginPress} style={styles.loginButton}>
+      <Pressable onPress={login} style={styles.loginButton}>
         <Text style={styles.loginButtonText}>Login</Text>
       </Pressable>
     </View>

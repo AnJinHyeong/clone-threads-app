@@ -20,10 +20,14 @@ if (__DEV__) {
 
         if (username === 'Denji' && password === '1234') {
           return {
-            accessToken: '1234567890',
-            refreshToken: '1234567890',
+            accessToken: 'access-token',
+            refreshToken: 'refresh-token',
             user: {
               id: 'Denji',
+              name: '덴지쿤',
+              description: 'Denji is a dog',
+              profileImageUrl:
+                'https://i.pinimg.com/736x/ed/cc/3c/edcc3c99612fb4ae2178a688e9e1f2d3.jpg',
             },
           };
         } else {
